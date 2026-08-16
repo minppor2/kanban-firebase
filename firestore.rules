@@ -1,0 +1,93 @@
+// SCAFFOLD ONLY — not deployed this phase.
+//
+// This phase ships with a mocked auth context (see src/hooks/useCurrentUser.ts),
+// so there is no real request.auth to check against yet and these rules are not
+// wired up to a live project. They document the access-control shape the data
+// model in src/types/models.ts was designed for, ready to deploy once real
+// Firebase Authentication replaces the mock.
+//
+// Key structural guarantee: a student's cards/lists can only ever be read by
+// that student or their teacher (when the card is marked public) — never by
+// another student, regardless of query shape, because every card document
+// carries its own ownerId/ownerType/classId/visibility rather than relying on
+// nested collection paths.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function membershipId(classId, uid) {
+      return classId + '_' + uid;
+    }
+
+    function isMemberOf(classId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/memberships/$(membershipId(classId, request.auth.uid)));
+    }
+
+    function isTeacherOf(classId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/memberships/$(membershipId(classId, request.auth.uid))).data.role == 'teacher';
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /classes/{classId} {
+      allow read: if isMemberOf(classId);
+      allow create: if isSignedIn();
+      allow update, delete: if isTeacherOf(classId);
+    }
+
+    // Codes are looked up by document ID only (getDoc), never queried by
+    // field — so there is intentionally no `allow list` here, which keeps
+    // join codes from being enumerable.
+    match /joinCodes/{code} {
+      allow get: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
+    match /memberships/{membershipId} {
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isTeacherOf(resource.data.classId));
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    function canOwnList(data) {
+      return (data.ownerType == 'student_board' && data.ownerId == request.auth.uid) ||
+        (data.ownerType == 'teacher_announcements' && isTeacherOf(data.classId));
+    }
+
+    match /lists/{listId} {
+      allow read: if isSignedIn() && (
+        (resource.data.ownerType == 'student_board' && resource.data.ownerId == request.auth.uid) ||
+        isTeacherOf(resource.data.classId)
+      );
+      allow create: if isSignedIn() && canOwnList(request.resource.data);
+      allow update, delete: if isSignedIn() && canOwnList(resource.data);
+    }
+
+    function canOwnCard(data) {
+      return (data.ownerType == 'student_board' && data.ownerId == request.auth.uid) ||
+        (data.ownerType == 'teacher_announcements' && isTeacherOf(data.classId));
+    }
+
+    match /cards/{cardId} {
+      allow read: if isSignedIn() && (
+        (resource.data.ownerType == 'student_board' &&
+          (request.auth.uid == resource.data.ownerId ||
+           (isTeacherOf(resource.data.classId) && resource.data.visibility == 'public'))) ||
+        (resource.data.ownerType == 'teacher_announcements' &&
+          (isTeacherOf(resource.data.classId) ||
+           (resource.data.visibility == 'public' && isMemberOf(resource.data.classId))))
+      );
+      allow create: if isSignedIn() && canOwnCard(request.resource.data);
+      allow update, delete: if isSignedIn() && canOwnCard(resource.data);
+    }
+  }
+}
