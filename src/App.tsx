@@ -3,6 +3,7 @@ import { AppShell } from './components/layout/AppShell'
 import { RootRedirect } from './routes/RootRedirect'
 import { RequireRole } from './routes/RequireRole'
 import { JoinClassPage } from './features/class/JoinClassPage'
+import { TeacherClassListPage } from './features/teacher/TeacherClassListPage'
 import { TeacherDashboardPage } from './features/teacher/TeacherDashboardPage'
 import { RosterPage } from './features/teacher/RosterPage'
 import { ScheduleEditorPage } from './features/teacher/ScheduleEditorPage'
@@ -26,12 +27,20 @@ function App() {
           path="/teacher"
           element={
             <RequireRole role="teacher">
+              <TeacherClassListPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/teacher/:classId"
+          element={
+            <RequireRole role="teacher">
               <TeacherDashboardPage />
             </RequireRole>
           }
         />
         <Route
-          path="/teacher/roster"
+          path="/teacher/:classId/roster"
           element={
             <RequireRole role="teacher">
               <RosterPage />
@@ -39,7 +48,7 @@ function App() {
           }
         />
         <Route
-          path="/teacher/schedule"
+          path="/teacher/:classId/schedule"
           element={
             <RequireRole role="teacher">
               <ScheduleEditorPage />
@@ -47,7 +56,7 @@ function App() {
           }
         />
         <Route
-          path="/teacher/students/:studentUid"
+          path="/teacher/:classId/students/:studentUid"
           element={
             <RequireRole role="teacher">
               <StudentBoardViewPage />

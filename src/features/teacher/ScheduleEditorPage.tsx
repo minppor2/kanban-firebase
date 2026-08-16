@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../../lib/firebase'
-import { useCurrentClass } from '../../hooks/useCurrentClass'
 import { useClassDoc } from '../../hooks/useClassDoc'
 import type { ScheduleEntry } from '../../types/models'
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
 export function ScheduleEditorPage() {
-  const { membership, isLoading: isMembershipLoading } = useCurrentClass()
-  const { classDoc } = useClassDoc(membership?.classId)
+  const { classId } = useParams<{ classId: string }>()
+  const { classDoc, isLoading } = useClassDoc(classId)
   const [entries, setEntries] = useState<ScheduleEntry[]>([])
   const [isSaving, setIsSaving] = useState(false)
 
@@ -17,8 +17,8 @@ export function ScheduleEditorPage() {
     if (classDoc) setEntries(classDoc.schedule)
   }, [classDoc])
 
-  if (isMembershipLoading) return <p className="text-sm text-slate-500">불러오는 중...</p>
-  if (!membership) return <p className="text-sm text-slate-500">먼저 학급을 만들어주세요.</p>
+  if (isLoading) return <p className="text-sm text-slate-500">불러오는 중...</p>
+  if (!classId || !classDoc) return <p className="text-sm text-slate-500">학급을 찾을 수 없습니다.</p>
 
   function addEntry() {
     setEntries((prev) => [...prev, { day: 1, period: 1, label: '' }])
@@ -33,10 +33,10 @@ export function ScheduleEditorPage() {
   }
 
   async function handleSave() {
-    if (!membership) return
+    if (!classId) return
     setIsSaving(true)
     try {
-      await updateDoc(doc(db, 'classes', membership.classId), { schedule: entries })
+      await updateDoc(doc(db, 'classes', classId), { schedule: entries })
     } finally {
       setIsSaving(false)
     }

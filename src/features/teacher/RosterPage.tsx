@@ -1,17 +1,12 @@
-import { Link } from 'react-router-dom'
-import { useCurrentClass } from '../../hooks/useCurrentClass'
+import { Link, useParams } from 'react-router-dom'
 import { useRoster } from './useRoster'
 
 export function RosterPage() {
-  const { membership, isLoading: isMembershipLoading } = useCurrentClass()
-  const { students, isLoading: isRosterLoading } = useRoster(membership?.classId)
+  const { classId } = useParams<{ classId: string }>()
+  const { students, isLoading } = useRoster(classId)
 
-  if (isMembershipLoading || isRosterLoading) {
+  if (isLoading) {
     return <p className="text-sm text-slate-500">불러오는 중...</p>
-  }
-
-  if (!membership) {
-    return <p className="text-sm text-slate-500">먼저 학급을 만들어주세요.</p>
   }
 
   if (students.length === 0) {
@@ -25,7 +20,7 @@ export function RosterPage() {
         {students.map((student) => (
           <li key={student.id}>
             <Link
-              to={`/teacher/students/${student.userId}`}
+              to={`/teacher/${classId}/students/${student.userId}`}
               className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-4 py-3 shadow-sm hover:border-indigo-300"
             >
               <span className="font-medium text-slate-800">{student.displayName}</span>

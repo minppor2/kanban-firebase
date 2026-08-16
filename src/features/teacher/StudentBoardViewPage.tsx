@@ -1,17 +1,15 @@
 import { useParams } from 'react-router-dom'
-import { useCurrentClass } from '../../hooks/useCurrentClass'
 import { useRoster } from './useRoster'
 import { BoardPage } from '../board/BoardPage'
 
 export function StudentBoardViewPage() {
-  const { studentUid } = useParams<{ studentUid: string }>()
-  const { membership, isLoading: isMembershipLoading } = useCurrentClass()
-  const { students, isLoading: isRosterLoading } = useRoster(membership?.classId)
+  const { classId, studentUid } = useParams<{ classId: string; studentUid: string }>()
+  const { students, isLoading } = useRoster(classId)
 
-  if (isMembershipLoading || isRosterLoading) {
+  if (isLoading) {
     return <p className="text-sm text-slate-500">불러오는 중...</p>
   }
-  if (!membership || !studentUid) {
+  if (!classId || !studentUid) {
     return <p className="text-sm text-slate-500">학생을 찾을 수 없습니다.</p>
   }
 
@@ -26,7 +24,7 @@ export function StudentBoardViewPage() {
         학생이 &ldquo;선생님께 공개&rdquo;로 전환한 기록만 표시됩니다.
       </p>
       <BoardPage
-        classId={membership.classId}
+        classId={classId}
         ownerId={studentUid}
         ownerType="student_board"
         mode="readonly"

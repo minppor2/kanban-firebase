@@ -1,19 +1,30 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { RoleSwitcher } from '../RoleSwitcher'
 import { useCurrentUser } from '../../hooks/useCurrentUser'
 
-const TEACHER_LINKS = [
-  { to: '/teacher', label: '공지 보드' },
-  { to: '/teacher/roster', label: '학생 명단' },
-  { to: '/teacher/schedule', label: '수업 일정' },
-]
+function useNavLinks() {
+  const { role } = useCurrentUser()
+  const { classId } = useParams<{ classId?: string }>()
 
-const STUDENT_LINKS = [{ to: '/board', label: '내 보드' }]
+  if (role === 'student') {
+    return [{ to: '/board', label: '내 보드' }]
+  }
+
+  if (!classId) {
+    return [{ to: '/teacher', label: '내 학급' }]
+  }
+
+  return [
+    { to: `/teacher/${classId}`, label: '공지 보드' },
+    { to: `/teacher/${classId}/roster`, label: '학생 명단' },
+    { to: `/teacher/${classId}/schedule`, label: '수업 일정' },
+    { to: '/teacher', label: '전체 학급' },
+  ]
+}
 
 export function AppHeader() {
-  const { role } = useCurrentUser()
   const { pathname } = useLocation()
-  const links = role === 'teacher' ? TEACHER_LINKS : STUDENT_LINKS
+  const links = useNavLinks()
 
   return (
     <header className="border-b border-slate-200 bg-white">
